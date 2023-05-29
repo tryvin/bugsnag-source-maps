@@ -36,12 +36,13 @@ interface UploadSingleOpts {
   idleTimeout?: number
   requestOpts?: http.RequestOptions
   logger?: Logger
+  ignoreUploadErrors?: boolean
 }
 
 function validateOneOpts (opts: Record<string, unknown>, unknownArgs: Record<string, unknown>) {
   validateRequiredStrings(opts, [ 'apiKey', 'sourceMap', 'bundleUrl', 'projectRoot', 'endpoint' ])
   validateOptionalStrings(opts, [ 'bundle', 'appVersion', 'codeBundleId' ])
-  validateBooleans(opts, [ 'overwrite', 'detectAppVersion' ])
+  validateBooleans(opts, [ 'overwrite', 'detectAppVersion', 'ignoreUploadErrors' ])
   validateObjects(opts, [ 'requestOpts', 'logger' ])
   validateNoUnknownArgs(unknownArgs)
 }
@@ -60,6 +61,7 @@ export async function uploadOne ({
   detectAppVersion = false,
   requestOpts = {},
   logger = noopLogger,
+  ignoreUploadErrors = false,
   ...unknownArgs
 }: UploadSingleOpts): Promise<void> {
   validateOneOpts({
@@ -74,7 +76,8 @@ export async function uploadOne ({
     endpoint,
     detectAppVersion,
     requestOpts,
-    logger
+    logger,
+    ignoreUploadErrors
   }, unknownArgs as Record<string, unknown>)
 
   logger.info(`Preparing upload of browser source map for "${bundleUrl}"`)
@@ -84,7 +87,11 @@ export async function uploadOne ({
     url = buildEndpointUrl(endpoint, UPLOAD_PATH)
   } catch (e) {
     logger.error(e)
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 
   const [ sourceMapContent, fullSourceMapPath ] = await readSourceMap(sourceMap, projectRoot, logger)
@@ -103,7 +110,11 @@ export async function uploadOne ({
       appVersion = await _detectAppVersion(projectRoot, logger)
     } catch (e) {
       logger.error(e.message)
-      throw e
+      if ( ! ignoreUploadErrors ) {
+        throw e
+      } else {
+        return;
+      }
     }
   }
 
@@ -130,7 +141,11 @@ export async function uploadOne ({
     } else {
       logger.error(formatErrorLog(e), e)
     }
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 }
 
@@ -147,13 +162,14 @@ interface UploadMultipleOpts {
   idleTimeout?: number
   requestOpts?: http.RequestOptions
   logger?: Logger
+  ignoreUploadErrors?: boolean
 }
 
 
 function validateMultipleOpts (opts: Record<string, unknown>, unknownArgs: Record<string, unknown>) {
   validateRequiredStrings(opts, [ 'apiKey', 'baseUrl', 'directory', 'projectRoot', 'endpoint' ])
   validateOptionalStrings(opts, [ 'appVersion', 'codeBundleId' ])
-  validateBooleans(opts, [ 'overwrite', 'detectAppVersion' ])
+  validateBooleans(opts, [ 'overwrite', 'detectAppVersion', 'ignoreUploadErrors' ])
   validateObjects(opts, [ 'requestOpts', 'logger' ])
   validateNoUnknownArgs(unknownArgs)
 }
@@ -171,6 +187,7 @@ export async function uploadMultiple ({
   endpoint = DEFAULT_UPLOAD_ORIGIN,
   requestOpts = {},
   logger = noopLogger,
+  ignoreUploadErrors = false,
   ...unknownArgs
 }: UploadMultipleOpts): Promise<void> {
   validateMultipleOpts({
@@ -184,7 +201,8 @@ export async function uploadMultiple ({
     endpoint,
     detectAppVersion,
     requestOpts,
-    logger
+    logger,
+    ignoreUploadErrors
   }, unknownArgs as Record<string, unknown>)
 
   logger.info(`Preparing upload of browser source maps for "${baseUrl}"`)
@@ -194,7 +212,11 @@ export async function uploadMultiple ({
     url = buildEndpointUrl(endpoint, UPLOAD_PATH)
   } catch (e) {
     logger.error(e)
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 
   logger.debug(`Searching for source maps "${directory}"`)
@@ -219,7 +241,11 @@ export async function uploadMultiple ({
       appVersion = await _detectAppVersion(projectRoot, logger)
     } catch (e) {
       logger.error(e.message)
-      throw e
+      if ( ! ignoreUploadErrors ) {
+        throw e
+      } else {
+        return;
+      }
     }
   }
 
@@ -264,7 +290,11 @@ export async function uploadMultiple ({
       } else {
         logger.error(formatErrorLog(e), e)
       }
-      throw e
+      if ( ! ignoreUploadErrors ) {
+        throw e
+      } else {
+        return;
+      }
     }
   }
 }

@@ -36,6 +36,7 @@ interface CommonUploadOpts {
   requestOpts?: http.RequestOptions
   logger?: Logger
   idleTimeout?: number
+  ignoreUploadErrors?: boolean
 }
 
 interface UploadSingleOpts extends CommonUploadOpts {
@@ -46,7 +47,7 @@ interface UploadSingleOpts extends CommonUploadOpts {
 function validateOneOpts (opts: Record<string, unknown>, unknownArgs: Record<string, unknown>) {
   validateRequiredStrings(opts, [ 'apiKey', 'sourceMap', 'projectRoot', 'endpoint', 'platform' ])
   validateOptionalStrings(opts, [ 'bundle', 'appVersion', 'codeBundleId', 'appVersionCode', 'appBundleVersion' ])
-  validateBooleans(opts, [ 'overwrite', 'dev' ])
+  validateBooleans(opts, [ 'overwrite', 'dev', 'ignoreUploadErrors' ])
   validateObjects(opts, [ 'requestOpts', 'logger' ])
   validateNoUnknownArgs(unknownArgs)
 }
@@ -67,6 +68,7 @@ export async function uploadOne ({
   endpoint = DEFAULT_UPLOAD_ORIGIN,
   requestOpts = {},
   logger = noopLogger,
+  ignoreUploadErrors = false,
   ...unknownArgs
 }: UploadSingleOpts): Promise<void> {
   validateOneOpts({
@@ -83,7 +85,8 @@ export async function uploadOne ({
     projectRoot,
     endpoint,
     requestOpts,
-    logger
+    logger,
+    ignoreUploadErrors
   }, unknownArgs as Record<string, unknown>)
 
   logger.info(`Preparing upload of React Native source map (${dev ? 'dev' : 'release'} / ${platform})`)
@@ -93,7 +96,11 @@ export async function uploadOne ({
     url = buildEndpointUrl(endpoint, UPLOAD_PATH)
   } catch (e) {
     logger.error(e)
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 
   const [ sourceMapContent, fullSourceMapPath ] = await readSourceMap(sourceMap, projectRoot, logger)
@@ -124,7 +131,11 @@ export async function uploadOne ({
     } else {
       logger.error(formatErrorLog(e, true), e)
     }
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 }
 
@@ -136,7 +147,7 @@ interface FetchUploadOpts extends CommonUploadOpts {
 function validateFetchOpts (opts: Record<string, unknown>, unknownArgs: Record<string, unknown>) {
   validateRequiredStrings(opts, [ 'apiKey', 'projectRoot', 'endpoint', 'platform', 'bundlerUrl', 'bundlerEntryPoint' ])
   validateOptionalStrings(opts, [ 'bundle', 'appVersion', 'codeBundleId', 'appVersionCode', 'appBundleVersion' ])
-  validateBooleans(opts, [ 'overwrite', 'dev' ])
+  validateBooleans(opts, [ 'overwrite', 'dev', 'ignoreUploadErrors' ])
   validateObjects(opts, [ 'requestOpts', 'logger' ])
   validateNoUnknownArgs(unknownArgs)
 }
@@ -157,6 +168,7 @@ export async function fetchAndUploadOne ({
   bundlerUrl = 'http://localhost:8081',
   bundlerEntryPoint = 'index.js',
   logger = noopLogger,
+  ignoreUploadErrors = false,
   ...unknownArgs
 }: FetchUploadOpts): Promise<void> {
   validateFetchOpts({
@@ -173,7 +185,8 @@ export async function fetchAndUploadOne ({
     requestOpts,
     bundlerUrl,
     bundlerEntryPoint,
-    logger
+    logger,
+    ignoreUploadErrors
   }, unknownArgs as Record<string, unknown>)
 
   logger.info(`Fetching React Native source map (${dev ? 'dev' : 'release'} / ${platform})`)
@@ -183,7 +196,11 @@ export async function fetchAndUploadOne ({
     url = buildEndpointUrl(endpoint, UPLOAD_PATH)
   } catch (e) {
     logger.error(e)
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 
   const queryString = qs.stringify({ platform, dev })
@@ -202,7 +219,11 @@ export async function fetchAndUploadOne ({
     logger.error(
       formatFetchError(e, bundlerUrl, bundlerEntryPoint), e
     )
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 
   try {
@@ -212,7 +233,11 @@ export async function fetchAndUploadOne ({
     logger.error(
       formatFetchError(e, bundlerUrl, bundlerEntryPoint), e
     )
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 
   const sourceMapPath = path.resolve(projectRoot, bundlerEntryPoint)
@@ -242,7 +267,11 @@ export async function fetchAndUploadOne ({
     } else {
       logger.error(formatErrorLog(e, true), e)
     }
-    throw e
+    if ( ! ignoreUploadErrors ) {
+      throw e
+    } else {
+      return;
+    }
   }
 }
 
